@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User as UserIcon, Calendar, UserCheck, MessageSquare, LogOut, Plus, X, Edit } from 'lucide-react';
+import { User as UserIcon, Calendar, UserCheck, MessageSquare, LogOut, Plus, X, Edit, CreditCard, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { paymentService, Payment } from '../services/paymentService';
+import { subscriptionService, Subscription } from '../services/subscriptionService';
 
 type MembreView = 'profil' | 'seances' | 'historique' | 'absences' | 'messages';
 
@@ -53,11 +55,48 @@ export function MembreDashboard() {
   const [showReplyMessage, setShowReplyMessage] = useState<string | null>(null);
   const [newMessageForm, setNewMessageForm] = useState({ destinataire: '', sujet: '', contenu: '' });
   const [replyContent, setReplyContent] = useState('');
+
+  // Payment and Subscription state
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [paymentsError, setPaymentsError] = useState<string | null>(null);
   
   const handleLogout = () => {
     logout();
     navigate('/');
   };
+
+  // Fetch payments and subscription when component mounts or when historique view is opened
+  useEffect(() => {
+    const loadPaymentsAndSubscription = async () => {
+      if (currentView === 'historique' && user?.id) {
+        setPaymentsLoading(true);
+        setPaymentsError(null);
+        try {
+          console.log('Loading payments for user ID:', user.id);
+          // Fetch payments for current user
+          const userPayments = await paymentService.getByMember(user.id);
+          console.log('Received payments:', userPayments);
+          setPayments(userPayments);
+
+          // Fetch all subscriptions to display alongside payments
+          const subscriptions = await subscriptionService.getAll();
+          console.log('Received subscriptions:', subscriptions);
+          if (subscriptions.length > 0) {
+            setCurrentSubscription(subscriptions[0]);
+          }
+        } catch (error: any) {
+          console.error('Error loading payments:', error);
+          setPaymentsError(error.message || 'Failed to load payment history');
+        } finally {
+          setPaymentsLoading(false);
+        }
+      }
+    };
+
+    loadPaymentsAndSubscription();
+  }, [currentView, user?.id]);
 
   const [profileData, setProfileData] = useState({
     telephone: '0612345678',
@@ -440,42 +479,140 @@ export function MembreDashboard() {
               </div>
             )}
 
-            {/* Historique View */}
+            {/* Historique View - Payments and Subscriptions */}
             {currentView === 'historique' && (
               <div className="space-y-6">
-                <h2 className="text-gray-900">Historique de mes séances</h2>
+                <h2 className="text-gray-900">Historique - Paiements et Abonnements</h2>
 
-                <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 border-b border-gray-200">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-gray-700">Sport</th>
-                        <th className="px-6 py-3 text-left text-gray-700">Coach</th>
-                        <th className="px-6 py-3 text-left text-gray-700">Date</th>
-                        <th className="px-6 py-3 text-left text-gray-700">Horaire</th>
-                        <th className="px-6 py-3 text-left text-gray-700">Statut</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {historique.map(seance => (
-                        <tr key={seance.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 text-gray-900">{seance.sport}</td>
-                          <td className="px-6 py-4 text-gray-600">{seance.coach}</td>
-                          <td className="px-6 py-4 text-gray-600">{seance.date}</td>
-                          <td className="px-6 py-4 text-gray-600">{seance.heureDebut} - {seance.heureFin}</td>
-                          <td className="px-6 py-4">
-                            <span className={`px-3 py-1 rounded-full ${
-                              seance.statut === 'presente'
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {seance.statut === 'presente' ? 'Présent(e)' : 'Absent(e)'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {/* Current Subscription Section */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <CreditCard className="w-6 h-6 text-indigo-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">Mon abonnement actuel</h3>
+                  </div>
+
+                  {currentSubscription ? (
+                    <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg p-5 border border-indigo-100">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-gray-600 mb-1">Type d'abonnement</p>
+                          <p className="text-gray-900 font-semibold">{currentSubscription.type}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600 mb-1">Prix</p>
+                          <p className="text-gray-900 font-semibold">{currentSubscription.price}€</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600 mb-1">Durée</p>
+                          <p className="text-gray-900 font-semibold">{currentSubscription.duration} mois</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600 mb-1">Status</p>
+                          <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">Actif</span>
+                        </div>
+                      </div>
+                      {currentSubscription.description && (
+                        <div className="mt-4 pt-4 border-t border-indigo-200">
+                          <p className="text-gray-600 mb-1">Description</p>
+                          <p className="text-gray-700">{currentSubscription.description}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-yellow-800">Aucun abonnement actif actuellement. Veuillez contacter l'administration.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Payment History Section */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <CreditCard className="w-6 h-6 text-indigo-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">Historique des paiements</h3>
+                  </div>
+
+                  {paymentsLoading ? (
+                    <div className="text-center py-8">
+                      <div className="inline-block">
+                        <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                      </div>
+                      <p className="text-gray-600 mt-2">Chargement des paiements...</p>
+                    </div>
+                  ) : paymentsError ? (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <p className="text-red-800">{paymentsError}</p>
+                    </div>
+                  ) : payments.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50 border-b border-gray-200">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-gray-700 font-semibold">Date</th>
+                            <th className="px-4 py-3 text-left text-gray-700 font-semibold">Montant</th>
+                            <th className="px-4 py-3 text-left text-gray-700 font-semibold">Méthode</th>
+                            <th className="px-4 py-3 text-left text-gray-700 font-semibold">Statut</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {payments.map((payment) => (
+                            <tr key={payment.id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 py-4 text-gray-900">
+                                {new Date(payment.paymentDate).toLocaleDateString('fr-FR', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}
+                              </td>
+                              <td className="px-4 py-4 text-gray-900 font-semibold">{payment.amount}€</td>
+                              <td className="px-4 py-4 text-gray-600">
+                                <span className="capitalize">
+                                  {payment.method === 'cash' ? 'Espèces' : payment.method === 'card' ? 'Carte' : 'Virement'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-4">
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 w-fit ${
+                                  payment.status === 'paid'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {payment.status === 'paid' && <CheckCircle className="w-4 h-4" />}
+                                  {payment.status === 'paid' ? 'Payé' : 'Annulé'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-600">Aucun paiement enregistré</p>
+                    </div>
+                  )}
+
+                  {/* Payment Summary */}
+                  {payments.length > 0 && (
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <p className="text-gray-600 text-sm mb-1">Total des paiements</p>
+                          <p className="text-gray-900 text-2xl font-bold">
+                            {payments.reduce((sum, p) => sum + p.amount, 0)}€
+                          </p>
+                        </div>
+                        <div className="bg-green-50 rounded-lg p-4">
+                          <p className="text-gray-600 text-sm mb-1">Paiements confirmés</p>
+                          <p className="text-green-900 text-2xl font-bold">
+                            {payments.filter(p => p.status === 'paid').length}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
