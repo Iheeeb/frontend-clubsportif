@@ -1,0 +1,110 @@
+interface MembreFormData {
+  nom: string;
+  prenom: string;
+  email: string;
+  telephone: string;
+  date_of_birth: string;
+  adress: string;
+  gender: string;
+  medical_note: string;
+}
+
+interface MembreFormProps {
+  formData: MembreFormData;
+  isEditing: boolean;
+  onSubmit: (e: React.FormEvent) => void;
+  onChange: (field: keyof MembreFormData, value: string) => void;
+  onCancel: () => void;
+}
+
+export function MembreForm({ formData, isEditing, onSubmit, onChange, onCancel }: MembreFormProps) {
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <h3 className="text-gray-900 mb-4">{isEditing ? 'Modifier le membre' : 'Nouveau membre'}</h3>
+      <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input
+          type="text"
+          name="nom"
+          placeholder="Nom"
+          value={formData.nom}
+          onChange={(e) => onChange('nom', e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <input
+          type="text"
+          name="prenom"
+          placeholder="Prénom"
+          value={formData.prenom}
+          onChange={(e) => onChange('prenom', e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          value={formData.email}
+          onChange={(e) => onChange('email', e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <input
+          type="tel"
+          name="telephone"
+          placeholder="Téléphone"
+          value={formData.telephone}
+          onChange={(e) => onChange('telephone', e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <input
+          type="text"
+          name="address"
+          placeholder="Adresse"
+          value={formData.adress}
+          onChange={(e) => onChange('adress', e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <select
+          name="gender"
+          value={formData.gender}
+          onChange={(e) => onChange('gender', e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <option value="">Sélectionner le genre</option>
+          <option value="M">Masculin</option>
+          <option value="F">Féminin</option>
+          <option value="OTHER">Autre</option>
+        </select>
+        <input
+          type="date"
+          name="dateofbirth"
+          placeholder="Date de naissance"
+          value={formData.date_of_birth}
+          onChange={(e) => onChange('date_of_birth', e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <textarea
+          name="medicalnote"
+          placeholder="Note médicale (optionnel)"
+          value={formData.medical_note}
+          onChange={(e) => onChange('medical_note', e.target.value)}
+          rows={3}
+          className="md:col-span-2 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <div className="md:col-span-2 flex gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            {isEditing ? 'Modifier' : 'Ajouter'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
