@@ -4,6 +4,8 @@ import { User as UserIcon, Calendar, UserCheck, MessageSquare, LogOut, Plus, X, 
 import { useAuthStore } from '../store/authStore';
 import { paymentService, Payment } from '../services/paymentService';
 import { subscriptionService, Subscription } from '../services/subscriptionService';
+import { userService } from '../services/userService';
+import { MemberChatView } from './MemberChatView';
 
 type MembreView = 'profil' | 'seances' | 'historique' | 'absences' | 'messages';
 
@@ -51,9 +53,7 @@ export function MembreDashboard() {
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<MembreView>('profil');
   const [editMode, setEditMode] = useState(false);
-  const [showNewMessage, setShowNewMessage] = useState(false);
   const [showReplyMessage, setShowReplyMessage] = useState<string | null>(null);
-  const [newMessageForm, setNewMessageForm] = useState({ destinataire: '', sujet: '', contenu: '' });
   const [replyContent, setReplyContent] = useState('');
 
   // Payment and Subscription state
@@ -61,6 +61,11 @@ export function MembreDashboard() {
   const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
   const [paymentsError, setPaymentsError] = useState<string | null>(null);
+
+  // Messaging state
+  const [coaches, setCoaches] = useState<any[]>([]);
+  const [admin, setAdmin] = useState<any>(null);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   
   const handleLogout = () => {
     logout();
@@ -97,6 +102,29 @@ export function MembreDashboard() {
 
     loadPaymentsAndSubscription();
   }, [currentView, user?.id]);
+
+  // Load coaches and admin for messaging
+  useEffect(() => {
+    const loadUsers = async () => {
+      if (currentView === 'messages') {
+        setLoadingUsers(true);
+        try {
+          const allUsers = await userService.getAll();
+          const coachList = allUsers.filter(u => u.role === 'COACH' && u.status === 'ACTIVE');
+          const adminUser = allUsers.find(u => u.role === 'ADMIN' && u.status === 'ACTIVE');
+          
+          setCoaches(coachList);
+          setAdmin(adminUser);
+        } catch (error) {
+          console.error('Error loading users:', error);
+        } finally {
+          setLoadingUsers(false);
+        }
+      }
+    };
+
+    loadUsers();
+  }, [currentView]);
 
   const [profileData, setProfileData] = useState({
     telephone: '0612345678',
@@ -208,18 +236,6 @@ export function MembreDashboard() {
     e.preventDefault();
     setEditMode(false);
     alert('Profil mis à jour avec succès !');
-  };
-
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    setShowNewMessage(false);
-    alert('Message envoyé avec succès !');
-  };
-
-  const handleReplyMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    setShowReplyMessage(null);
-    alert('Réponse envoyée avec succès !');
   };
 
   return (
@@ -648,119 +664,25 @@ export function MembreDashboard() {
 
             {/* Messages View */}
             {currentView === 'messages' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-gray-900">Messagerie</h2>
-                  <button
-                    onClick={() => setShowNewMessage(true)}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                  >
-                    Nouveau message
-                  </button>
-                </div>
-
-                {showNewMessage && (
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <form onSubmit={handleSendMessage} className="space-y-4">
-                      <div>
-                        <label className="block text-gray-700 mb-2">Destinataire</label>
-                        <input
-                          type="text"
-                          value={newMessageForm.destinataire}
-                          onChange={(e) => setNewMessageForm({ ...newMessageForm, destinataire: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-700 mb-2">Sujet</label>
-                        <input
-                          type="text"
-                          value={newMessageForm.sujet}
-                          onChange={(e) => setNewMessageForm({ ...newMessageForm, sujet: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-gray-700 mb-2">Contenu</label>
-                        <textarea
-                          value={newMessageForm.contenu}
-                          onChange={(e) => setNewMessageForm({ ...newMessageForm, contenu: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowNewMessage(false)}
-                          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                        >
-                          Annuler
-                        </button>
-                        <button
-                          type="submit"
-                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                        >
-                          Envoyer
-                        </button>
-                      </div>
-                    </form>
+              loadingUsers ? (
+                <div className="bg-white rounded-lg shadow-md p-6 text-center">
+                  <div className="inline-block">
+                    <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
                   </div>
-                )}
-
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <div className="space-y-4">
-                    {messages.map(message => (
-                      <div key={message.id} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className="text-gray-900">{message.expediteur} ({message.expediteurRole})</p>
-                            <p className="text-gray-500">{message.date}</p>
-                          </div>
-                        </div>
-                        <p className="text-gray-700 mb-3">
-                          {message.contenu}
-                        </p>
-                        <button
-                          onClick={() => setShowReplyMessage(message.id)}
-                          className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                        >
-                          Répondre
-                        </button>
-
-                        {showReplyMessage === message.id && (
-                          <div className="mt-4 bg-gray-50 p-4 rounded-lg">
-                            <form onSubmit={handleReplyMessage} className="space-y-4">
-                              <div>
-                                <label className="block text-gray-700 mb-2">Contenu de la réponse</label>
-                                <textarea
-                                  value={replyContent}
-                                  onChange={(e) => setReplyContent(e.target.value)}
-                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                />
-                              </div>
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setShowReplyMessage(null)}
-                                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                                >
-                                  Annuler
-                                </button>
-                                <button
-                                  type="submit"
-                                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                                >
-                                  Envoyer
-                                </button>
-                              </div>
-                            </form>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-gray-600 mt-2">Chargement de la messagerie...</p>
                 </div>
-              </div>
+              ) : coaches.length > 0 && admin ? (
+                <MemberChatView 
+                  member={user as any}
+                  coaches={coaches}
+                  admin={admin}
+                />
+              ) : (
+                <div className="bg-white rounded-lg shadow-md p-6 text-center">
+                  <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-600">Aucun coach ou administrateur disponible</p>
+                </div>
+              )
             )}
           </main>
         </div>
