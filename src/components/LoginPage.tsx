@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogIn, Users } from 'lucide-react';
 import { z } from 'zod';
 import { useAuthStore } from '../store/authStore';
+import { InactiveAccountPage } from './InactiveAccountPage';
 
 const loginSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -13,7 +14,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const { login, isLoading, error, user } = useAuthStore();
+  const { login, isLoading, error, user, isInactive, inactiveEmail, resetInactive } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,6 +61,11 @@ export function LoginPage() {
       // Les erreurs d'API sont gérées par le store
     }
   };
+
+  // Show inactive account page if account is inactive
+  if (isInactive && inactiveEmail) {
+    return <InactiveAccountPage email={inactiveEmail} onReset={resetInactive} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
