@@ -44,7 +44,8 @@ type AdminView =
   | "messages"
   | "chat"
   | "payments"
-  | "teams";
+  | "teams"
+  | "subscriptions";
 
 type MembreFormState = {
   nom: string;
@@ -711,6 +712,7 @@ setTeams(teamsData);
           {currentView === "teams" && (
             <TeamsView
               teams={teams}
+              setTeams={setTeams}
               sports={sports}
               coaches={coaches}
               // plus tard: showAddTeam, teamForm, isEditing, handlers...
@@ -742,6 +744,12 @@ setTeams(teamsData);
               selectedMember={selectedMemberForPayment as any}
               onPaymentSuccess={handlePaymentSuccess}
               onBack={() => setCurrentView("membres")}
+            />
+          )}
+
+          {currentView === "subscriptions" && (
+            <SubscriptionsView
+              membres={membres}
             />
           )}
         </main>

@@ -1,14 +1,17 @@
 // PaymentsView.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Plus, Ban, RefreshCw } from 'lucide-react';
-import { User } from '../../services/userService';
+import { User, userService } from '../../services/userService';
 import { Payment, paymentService } from '../../services/paymentService';
 
 type SubscriptionPlan = { id: number; type: string; price: number; durationMonths: number };
 
 // Plans statiques (tu peux les aligner avec ta table subscriptions plus tard)
 const PLANS: SubscriptionPlan[] = [
-  { id: 1, type: 'Premium', price: 29.98, durationMonths: 12 },
+  { id: 1, type: 'Mensuel', price: 90.99, durationMonths: 1 },
+  { id: 2, type: '3 Mois', price: 240.99, durationMonths: 3 },
+  { id: 3, type: '6 Mois', price: 440.99, durationMonths: 6 },
+  { id: 4, type: 'Annuel', price: 790.99, durationMonths: 12 },
 ];
 
 function addMonths(dateStr: string, months: number) {
@@ -106,25 +109,39 @@ export function PaymentsView({ membres, selectedMember, onPaymentSuccess, onBack
     if (!paymentDate) return alert('Date invalide');
 
     try {
-      const created = await paymentService.create({
+      const payload = {
         id_member: mid,
         id_subscription: sid,
         amount: amt,
         payment_date: paymentDate,
         method,
         status,
-      });
+      };
+      
+      console.log('DEBUG - Sending payment payload:', payload);
+
+      const created = await paymentService.create(payload);
+
+      // Si le paiement est "paid", mettre à jour le statut du membre à ACTIVE
+      if (created.status === 'paid') {
+        try {
+          await userService.updateStatus(mid, { status: 'ACTIVE' });
+          console.log('DEBUG - Membre statut mis à jour à ACTIVE');
+        } catch (err) {
+          console.error('Erreur lors de la mise à jour du statut:', err);
+        }
+        onPaymentSuccess?.(mid);
+      }
 
       // refresh liste
       const list = await paymentService.getAll();
       setPayments(list);
 
-      if (created.status === 'paid') onPaymentSuccess?.(mid);
-
       alert('Paiement enregistré');
-    } catch (err) {
-      console.error(err);
-      alert("Erreur lors de l'enregistrement du paiement");
+    } catch (err: any) {
+      console.error('ERROR:', err);
+      console.error('Error response:', err.response?.data);
+      alert("Erreur lors de l'enregistrement du paiement: " + (err.response?.data?.message || err.message));
     }
   };
 

@@ -8,6 +8,7 @@ import {
   Trophy,
   Layers,
   UsersRound,
+  CreditCard,
 } from 'lucide-react';
 
 export type AdminView =
@@ -18,7 +19,8 @@ export type AdminView =
   | 'reservations'
   | 'messages'
   | 'teams'
-  | 'payments';
+  | 'payments'
+  | 'subscriptions';
 
 interface AdminSidebarProps {
   currentView: AdminView;
@@ -37,7 +39,8 @@ export function AdminSidebar({ currentView, onViewChange }: AdminSidebarProps) {
 
     { id: 'messages' as AdminView, icon: MessageSquare, label: 'Messages', title: 'Notifications / Messagerie' },
     { id: 'teams' as AdminView, icon: UsersRound, label: 'Équipes', title: 'Créer et gérer les équipes' },
-    { id: 'payments' as AdminView, icon: UserCog, label: 'Paiements', title: 'Gérer les paiements' },
+    { id: 'payments' as AdminView, icon: CreditCard, label: 'Paiements', title: 'Gérer les paiements' },
+    { id: 'subscriptions' as AdminView, icon: Calendar, label: 'Abonnements', title: 'Gérer les abonnements' },
   ];
 
   return (
