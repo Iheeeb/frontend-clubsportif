@@ -63,6 +63,15 @@ export class MessageService {
     return apiService.get<Message>(`/messages/${id}`);
   }
 
+  // Get messages between two users
+  async getMessages(userId1: number, userId2: number): Promise<Message[]> {
+    const allMessages = await this.getAll(userId1);
+    return allMessages.filter(msg => 
+      (msg.id_emetteur === userId1 && msg.id_destinataire === userId2) ||
+      (msg.id_emetteur === userId2 && msg.id_destinataire === userId1)
+    );
+  }
+
   // Envoyer un message à un destinataire unique
   async sendToUser(data: {
     id_emetteur: number;

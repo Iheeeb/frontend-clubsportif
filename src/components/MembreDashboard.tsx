@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User as UserIcon, Calendar, UserCheck, MessageSquare, LogOut, Plus, X, Edit, CreditCard, AlertCircle, CheckCircle } from 'lucide-react';
+import { User as UserIcon, Calendar, MessageSquare, LogOut, Plus, X, Edit, CreditCard, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { paymentService, Payment } from '../services/paymentService';
 import { subscriptionService, Subscription } from '../services/subscriptionService';
 import { userService } from '../services/userService';
 import { MemberChatView } from './MemberChatView';
 
-type MembreView = 'profil' | 'seances' | 'historique' | 'absences' | 'messages';
+type MembreView = 'profil' | 'seances' | 'historique' | 'messages';
 
 interface Seance {
   id: string;
@@ -51,10 +51,23 @@ interface Message {
 export function MembreDashboard() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+
+  if (!user) {
+    return <div>Chargement...</div>;
+  }
   const [currentView, setCurrentView] = useState<MembreView>('profil');
   const [editMode, setEditMode] = useState(false);
   const [showReplyMessage, setShowReplyMessage] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   // Payment and Subscription state
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -65,6 +78,7 @@ export function MembreDashboard() {
   // Messaging state
   const [coaches, setCoaches] = useState<any[]>([]);
   const [admin, setAdmin] = useState<any>(null);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   
   const handleLogout = () => {
@@ -103,18 +117,24 @@ export function MembreDashboard() {
     loadPaymentsAndSubscription();
   }, [currentView, user?.id]);
 
-  // Load coaches and admin for messaging
+  // Load coaches, admin, and team members for messaging
   useEffect(() => {
     const loadUsers = async () => {
-      if (currentView === 'messages') {
+      if (currentView === 'messages' && user?.id) {
         setLoadingUsers(true);
         try {
+          // Get admin
           const allUsers = await userService.getAll();
-          const coachList = allUsers.filter(u => u.role === 'COACH' && u.status === 'ACTIVE');
           const adminUser = allUsers.find(u => u.role === 'ADMIN' && u.status === 'ACTIVE');
-          
-          setCoaches(coachList);
           setAdmin(adminUser);
+
+          // Get related coaches (coaches of teams the member belongs to)
+          const relatedCoaches = await userService.getRelatedCoaches(user.id);
+          setCoaches(relatedCoaches);
+
+          // Get team members (other members in the same teams)
+          const teamMembersList = await userService.getTeamMembers(user.id);
+          setTeamMembers(teamMembersList);
         } catch (error) {
           console.error('Error loading users:', error);
         } finally {
@@ -124,7 +144,7 @@ export function MembreDashboard() {
     };
 
     loadUsers();
-  }, [currentView]);
+  }, [currentView, user?.id]);
 
   const [profileData, setProfileData] = useState({
     telephone: '0612345678',
@@ -238,6 +258,68 @@ export function MembreDashboard() {
     alert('Profil mis à jour avec succès !');
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    if (!user) {
+      setPasswordError('Utilisateur non trouvé');
+      return;
+    }
+
+    // Validation
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      setPasswordError('Veuillez remplir tous les champs pour modifier votre mot de passe.');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordError('Le nouveau mot de passe doit contenir au moins 6 caractères pour garantir la sécurité de votre compte.');
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('Les deux mots de passe ne correspondent pas. Veuillez vérifier que vous avez bien saisi le même mot de passe dans les deux champs.');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await userService.changePassword(user.id, passwordData.currentPassword, passwordData.newPassword);
+      setPasswordSuccess(true);
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+      setTimeout(() => {
+        setShowChangePassword(false);
+        setPasswordSuccess(false);
+      }, 2000);
+    } catch (error: any) {
+      // Improve error messages from backend
+      let errorMessage = 'Une erreur est survenue lors du changement de mot de passe.';
+      
+      if (error.message) {
+        const errorMsg = error.message.toLowerCase();
+        if (errorMsg.includes('incorrect') || errorMsg.includes('wrong') || errorMsg.includes('invalid')) {
+          errorMessage = 'Le mot de passe actuel est incorrect. Veuillez vérifier votre saisie et réessayer.';
+        } else if (errorMsg.includes('same') || errorMsg.includes('identique')) {
+          errorMessage = 'Le nouveau mot de passe doit être différent de l\'ancien. Veuillez choisir un autre mot de passe.';
+        } else if (errorMsg.includes('network') || errorMsg.includes('connection') || errorMsg.includes('timeout')) {
+          errorMessage = 'Problème de connexion. Veuillez vérifier votre connexion internet et réessayer.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
+      setPasswordError(errorMessage);
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -294,17 +376,6 @@ export function MembreDashboard() {
               >
                 <Calendar className="w-5 h-5" />
                 Historique
-              </button>
-              <button
-                onClick={() => setCurrentView('absences')}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  currentView === 'absences'
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <UserCheck className="w-5 h-5" />
-                Mes absences
               </button>
               <button
                 onClick={() => setCurrentView('messages')}
@@ -411,30 +482,130 @@ export function MembreDashboard() {
                     </div>
                   </form>
                 ) : (
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-gray-500">Nom</p>
-                      <p className="text-gray-900">{user.nom}</p>
+                  <div className="space-y-6">
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-gray-500">Nom</p>
+                        <p className="text-gray-900">{user.nom}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Prénom</p>
+                        <p className="text-gray-900">{user.prenom}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Email</p>
+                        <p className="text-gray-900">{user.email}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Téléphone</p>
+                        <p className="text-gray-900">{profileData.telephone}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Adresse</p>
+                        <p className="text-gray-900">{profileData.adresse}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Date de naissance</p>
+                        <p className="text-gray-900">{profileData.dateNaissance}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Prénom</p>
-                      <p className="text-gray-900">{user.prenom}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Email</p>
-                      <p className="text-gray-900">{user.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Téléphone</p>
-                      <p className="text-gray-900">{profileData.telephone}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Adresse</p>
-                      <p className="text-gray-900">{profileData.adresse}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Date de naissance</p>
-                      <p className="text-gray-900">{profileData.dateNaissance}</p>
+
+                    {/* Change Password Section */}
+                    <div className="border-t border-gray-200 pt-6">
+                      <div className="flex justify-between items-center mb-4">
+                        <div>
+                          <h3 className="text-gray-900 font-semibold">Mot de passe</h3>
+                          <p className="text-sm text-gray-500 mt-1">Modifiez votre mot de passe</p>
+                        </div>
+                        {!showChangePassword && (
+                          <button
+                            onClick={() => {
+                              setShowChangePassword(true);
+                              setPasswordError(null);
+                              setPasswordSuccess(false);
+                            }}
+                            className="px-4 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors text-sm font-medium"
+                          >
+                            Changer le mot de passe
+                          </button>
+                        )}
+                      </div>
+
+                      {showChangePassword && (
+                        <form onSubmit={handleChangePassword} className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                          {passwordError && (
+                            <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 flex items-start gap-3">
+                              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="text-red-900 font-medium text-sm mb-1">Erreur</p>
+                                <p className="text-red-800 text-sm leading-relaxed">{passwordError}</p>
+                              </div>
+                            </div>
+                          )}
+                          {passwordSuccess && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-2">
+                              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                              <p className="text-green-800 text-sm">Mot de passe modifié avec succès !</p>
+                            </div>
+                          )}
+                          <div>
+                            <label className="block text-gray-700 mb-2 text-sm">Mot de passe actuel</label>
+                            <input
+                              type="password"
+                              value={passwordData.currentPassword}
+                              onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              disabled={changingPassword}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-gray-700 mb-2 text-sm">Nouveau mot de passe</label>
+                            <input
+                              type="password"
+                              value={passwordData.newPassword}
+                              onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              disabled={changingPassword}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-gray-700 mb-2 text-sm">Confirmer le nouveau mot de passe</label>
+                            <input
+                              type="password"
+                              value={passwordData.confirmPassword}
+                              onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              disabled={changingPassword}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowChangePassword(false);
+                                setPasswordData({
+                                  currentPassword: '',
+                                  newPassword: '',
+                                  confirmPassword: ''
+                                });
+                                setPasswordError(null);
+                                setPasswordSuccess(false);
+                              }}
+                              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                              disabled={changingPassword}
+                            >
+                              Annuler
+                            </button>
+                            <button
+                              type="submit"
+                              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              disabled={changingPassword}
+                            >
+                              {changingPassword ? 'Modification...' : 'Modifier le mot de passe'}
+                            </button>
+                          </div>
+                        </form>
+                      )}
                     </div>
                   </div>
                 )}
@@ -633,35 +804,6 @@ export function MembreDashboard() {
               </div>
             )}
 
-            {/* Absences View */}
-            {currentView === 'absences' && (
-              <div className="space-y-6">
-                <h2 className="text-gray-900">Mes absences</h2>
-
-                {absences.length > 0 ? (
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <div className="space-y-3">
-                      {absences.map(absence => (
-                        <div key={absence.id} className="border border-red-200 bg-red-50 rounded-lg p-4">
-                          <h3 className="text-gray-900 mb-1">{absence.sport}</h3>
-                          <p className="text-gray-600">{absence.date} - {absence.heureDebut} à {absence.heureFin}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <p className="text-gray-700">
-                        Vous avez {absences.length} absence{absences.length > 1 ? 's' : ''} enregistrée{absences.length > 1 ? 's' : ''}.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-white rounded-lg shadow-md p-6">
-                    <p className="text-center text-gray-500 py-8">Aucune absence enregistrée</p>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Messages View */}
             {currentView === 'messages' && (
               loadingUsers ? (
@@ -671,16 +813,19 @@ export function MembreDashboard() {
                   </div>
                   <p className="text-gray-600 mt-2">Chargement de la messagerie...</p>
                 </div>
-              ) : coaches.length > 0 && admin ? (
-                <MemberChatView 
-                  member={user as any}
-                  coaches={coaches}
-                  admin={admin}
-                />
+              ) : (admin || coaches.length > 0 || teamMembers.length > 0) ? (
+                <div className="overflow-auto">
+                  <MemberChatView 
+                    member={user as any}
+                    coaches={coaches}
+                    admin={admin}
+                    teamMembers={teamMembers}
+                  />
+                </div>
               ) : (
                 <div className="bg-white rounded-lg shadow-md p-6 text-center">
                   <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-600">Aucun coach ou administrateur disponible</p>
+                  <p className="text-gray-600">Aucun contact disponible</p>
                 </div>
               )
             )}

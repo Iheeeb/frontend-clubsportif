@@ -122,6 +122,21 @@ export class UserService {
   async getSubscriptionStatus(id: number): Promise<SubscriptionStatus> {
     return apiService.get<SubscriptionStatus>(`/users/${id}/subscription-status`);
   }
+
+  async getRelatedCoaches(memberId: number): Promise<User[]> {
+    return apiService.get<User[]>(`/users/${memberId}/related-coaches`);
+  }
+
+  async getTeamMembers(memberId: number): Promise<User[]> {
+    return apiService.get<User[]>(`/users/${memberId}/team-members`);
+  }
+
+  async changePassword(userId: number, currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    return apiService.post<{ message: string }>(`/users/${userId}/change-password`, {
+      currentPassword,
+      newPassword
+    });
+  }
 }
 
 export const userService = new UserService();
