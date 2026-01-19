@@ -2,6 +2,8 @@ import { apiService } from './apiService';
 
 export interface User {
   id: number;
+  nom: string;
+  prenom: string;
   fullName: string;
   email: string;
   phone?: string;
@@ -14,7 +16,7 @@ export interface User {
   gender?: string;
   join_date?: string;
   medical_note?: string;
-  adress?: string;
+  address?: string;
 
   speciality?: string;
   experience_years?: number;
