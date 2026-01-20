@@ -221,36 +221,36 @@ const allUsers = useMemo(() => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div className="bg-white rounded-lg shadow-md p-6" style={{ width: '800px', height: '600px', display: 'flex', flexDirection: 'column' }}>
       <h2 className="text-gray-900 mb-6">Messagerie interne</h2>
       
-      <div className="space-y-4">
+      <div className="space-y-4 overflow-y-auto flex-1" style={{ maxHeight: '450px' }}>
         {messages.map(message => (
-          <div key={message.id} className="border border-gray-200 rounded-lg p-4">
+          <div key={message.id} className="bg-blue-100 border border-blue-300 rounded-lg p-4">
             <div className="flex justify-between items-start mb-2">
               <div>
-                <p className="text-gray-900">{message.expediteur} ({message.expediteurRole})</p>
-                <p className="text-gray-500">{message.date}</p>
+                <p className="text-gray-900 font-semibold">{message.expediteur} ({message.expediteurRole})</p>
+                <p className="text-gray-700 text-sm">{message.date}</p>
               </div>
               <button
                 title="Répondre au message"
                 onClick={() => setShowReplyMessage(message.id)}
-                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                className="p-2 text-blue-700 hover:bg-blue-200 rounded-lg font-medium"
               >
                 Répondre
               </button>
             </div>
-            <p className="text-gray-700 mb-3">
+            <p className="text-gray-900 mb-3">
               {message.contenu}
             </p>
             
             {message.reponses && message.reponses.length > 0 && (
               <div className="space-y-2">
                 {message.reponses.map(reponse => (
-                  <div key={reponse.id} className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-gray-900">{reponse.expediteur} ({reponse.expediteurRole})</p>
-                    <p className="text-gray-700">{reponse.contenu}</p>
-                    <p className="text-gray-500">{reponse.date}</p>
+                  <div key={reponse.id} className="bg-blue-200 border border-blue-400 p-3 rounded-lg">
+                    <p className="text-gray-900 font-semibold">{reponse.expediteur} ({reponse.expediteurRole})</p>
+                    <p className="text-gray-900">{reponse.contenu}</p>
+                    <p className="text-gray-700 text-sm">{reponse.date}</p>
                   </div>
                 ))}
               </div>
@@ -262,7 +262,7 @@ const allUsers = useMemo(() => {
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
                   placeholder="Votre réponse..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white"
                   rows={3}
                 />
                 <div className="flex gap-2">
@@ -277,7 +277,7 @@ const allUsers = useMemo(() => {
                       setShowReplyMessage(null);
                       setReplyContent('');
                     }}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-900"
                   >
                     Annuler
                   </button>
@@ -291,7 +291,7 @@ const allUsers = useMemo(() => {
       <button
         title="Créer un nouveau message"
         onClick={() => setShowNewMessage(!showNewMessage)}
-        className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+        className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
       >
         Nouveau message
       </button>
@@ -385,7 +385,7 @@ const allUsers = useMemo(() => {
               value={newMessageContent}
               onChange={(e) => setNewMessageContent(e.target.value)}
               placeholder="Contenu du message..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 bg-white"
               rows={4}
             />
           </div>
