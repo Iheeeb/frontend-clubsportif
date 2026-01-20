@@ -187,3 +187,29 @@
 html {
   font-size: var(--font-size);
 }
+@layer utilities {
+  @keyframes blob {
+    0%   { transform: translate(0px, 0px) scale(1); }
+    33%  { transform: translate(30px, -40px) scale(1.08); }
+    66%  { transform: translate(-20px, 25px) scale(0.95); }
+    100% { transform: translate(0px, 0px) scale(1); }
+  }
+
+  .animate-blob {
+    animation: blob 8s infinite;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+}
+/* ---- Landing Page scope: neutralise la base typography globale ---- */
+.lp-scope :is(h1, h2, h3, h4, p, label, button, input) {
+  font-size: revert;
+  font-weight: revert;
+  line-height: revert;
+}

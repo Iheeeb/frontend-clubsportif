@@ -56,6 +56,7 @@ type MembreFormState = {
   adress: string;
   gender: string;
   medical_note: string;
+  teamId: string;
 };
 
 type CoachFormState = {
@@ -121,6 +122,7 @@ export function AdminDashboard() {
     adress: "",
     gender: "",
     medical_note: "",
+    teamId: '',
   });
 
   const [coachForm, setCoachForm] = useState<CoachFormState>({
@@ -202,6 +204,8 @@ setTeams(teamsData);
       adress: "",
       gender: "",
       medical_note: "",
+      teamId: '',
+
     });
   };
 
@@ -237,8 +241,13 @@ setTeams(teamsData);
           gender: membreForm.gender || undefined,
           medical_note: membreForm.medical_note || undefined,
         };
+if (!membreForm.teamId) {
+  alert("Veuillez sélectionner une équipe.");
+  return;
+}
 
         const created = await userService.createMember(payload);
+await teamService.addMember(parseInt(membreForm.teamId, 10), created.id);
 
         // Règle métier UI: nouveau membre désactivé jusqu’au paiement
         const createdInactive = { ...created, status: "INACTIVE" as any };
@@ -267,6 +276,7 @@ setTeams(teamsData);
       gender: (membre as any).gender || "",
       adress: (membre as any).adress || "",
       medical_note: (membre as any).medical_note || "",
+      teamId: ((membre as any).teamId ? String((membre as any).teamId) : ''),
     });
 
     setEditingMembre(membre);
@@ -672,6 +682,7 @@ setTeams(teamsData);
               onDelete={handleDeleteMembre}
               onCancel={handleCancelMembreForm}
               onGoToPayment={handleGoToPaymentForMember}
+              teams={teams}
             />
           )}
 
